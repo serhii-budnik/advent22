@@ -115,27 +115,76 @@ impl List {
             },
         }
     }
+
+    fn iter(&self) -> Iter {
+        Iter { current: self.head.clone(), current_back: self.tail.clone() }
+    }
+}
+
+pub struct Iter {
+    current: Option<NodePtr>,
+    current_back: Option<NodePtr>,
+}
+
+impl Iterator for Iter {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.current.take() {
+            None => None,
+            Some(current) => {
+                let node = (*current).borrow();
+                self.current = node.next.clone();
+
+                Some(node.value)
+            },
+        }
+    }
+}
+
+impl DoubleEndedIterator for Iter {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.current_back.take() {
+            None => None,
+            Some(current_back) => {
+                let node = (*current_back).borrow();
+
+                if let Some(prev) = &node.prev {
+                    let prev = prev.upgrade();
+                    
+                    self.current_back = prev;
+                }
+
+                Some(node.value)
+            },
+        }
+    }
 }
 
 fn main() {
     let mut list = List::new();
 
-    list.unshift('A');
-    list.unshift('B');
-    list.unshift('C');
-    list.unshift('D');
+    list.unshift('4');
+    list.unshift('3');
+    list.unshift('2');
+    list.unshift('1');
 
-    println!("{:?}", list);
+    println!("list -> {:?}", list);
 
-    let res = list.shift();
-    println!("{:?}", res);
-    let res = list.shift();
-    println!("{:?}", res);
-    let res = list.shift();
-    println!("{:?}", res);
-    let res = list.shift();
-    println!("{:?}", res);
-    let res = list.shift();
-    println!("{:?}", res);
-    println!("{:?}", list);
+    let mut iter = list.iter();
+
+    println!("next {:?}", iter.next());
+    println!("next {:?}", iter.next());
+    println!("next {:?}", iter.next());
+    
+    println!("back {:?}", iter.next_back());
+    println!("back {:?}", iter.next_back());
+    println!("back {:?}", iter.next_back());
+    println!("back {:?}", iter.next_back());
+    println!("back {:?}", iter.next_back());
+                    
+    println!("next {:?}", iter.next());
+    println!("next {:?}", iter.next());
+
+    println!("list -> {:?}", list);
 }
