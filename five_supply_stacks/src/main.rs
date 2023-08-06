@@ -32,7 +32,7 @@ impl List {
         Self { head: None, tail: None }
     }
 
-    fn push_back(&mut self, value: char) {
+    fn push(&mut self, value: char) {
         let mut node = Node::new(value);
 
         match self.tail.take() {
@@ -75,6 +75,25 @@ impl List {
         }
     }
 
+    fn unshift(&mut self, value: char) {
+        let mut new_node = Node::new(value);
+
+        match self.head.take() {
+            None => {
+                self.head = new_node.into();
+                self.tail = self.head.clone();
+            },
+            Some(current_head) => {
+                new_node.next = Some(current_head.clone());
+                self.head = new_node.into();
+
+                if let Some(h) = &self.head {
+                    (*current_head).borrow_mut().prev = Some(Rc::downgrade(h));
+                }
+            },
+        };
+    }
+
     fn shift(&mut self) -> Option<char> {
         match self.head.take() {
             None => None,
@@ -101,10 +120,10 @@ impl List {
 fn main() {
     let mut list = List::new();
 
-    list.push_back('A');
-    list.push_back('B');
-    list.push_back('C');
-    list.push_back('D');
+    list.unshift('A');
+    list.unshift('B');
+    list.unshift('C');
+    list.unshift('D');
 
     println!("{:?}", list);
 
