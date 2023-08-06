@@ -74,6 +74,28 @@ impl List {
             },
         }
     }
+
+    fn shift(&mut self) -> Option<char> {
+        match self.head.take() {
+            None => None,
+            Some(head) => {
+                let head_value = (*head).borrow().value;
+                let after_head = (*head).borrow_mut().next.take();
+
+                match after_head {
+                    None => {
+                        self.tail.take();
+                    },
+                    Some(after_head) => { 
+                        (*after_head).borrow_mut().prev = None;
+                        self.head = Some(after_head);
+                    },
+                }
+
+                Some(head_value)
+            },
+        }
+    }
 }
 
 fn main() {
@@ -86,19 +108,15 @@ fn main() {
 
     println!("{:?}", list);
 
-    let res = list.pop();
+    let res = list.shift();
     println!("{:?}", res);
-
-    println!("{:?}", list);
-
-    let res = list.pop();
+    let res = list.shift();
     println!("{:?}", res);
-    let res = list.pop();
+    let res = list.shift();
     println!("{:?}", res);
-    let res = list.pop();
+    let res = list.shift();
     println!("{:?}", res);
-    let res = list.pop();
+    let res = list.shift();
     println!("{:?}", res);
-
     println!("{:?}", list);
 }
