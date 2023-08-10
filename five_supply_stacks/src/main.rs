@@ -1,4 +1,5 @@
-use std::{cell::RefCell, rc::{Rc, Weak}};
+use regex::Regex;
+use std::{cell::RefCell, rc::{Rc, Weak}, fs};
 
 type NodePtr = Rc<RefCell<Node>>;
 
@@ -162,29 +163,81 @@ impl DoubleEndedIterator for Iter {
 }
 
 fn main() {
-    let mut list = List::new();
+    let init_input = fs::read_to_string("./input_initial.txt")
+        .expect("Can not read input file");
 
-    list.unshift('4');
-    list.unshift('3');
-    list.unshift('2');
-    list.unshift('1');
+    let input = fs::read_to_string("./input.txt")
+        .expect("Can not read input file");
 
-    println!("list -> {:?}", list);
+    let mut stacks = build_stacks(&init_input, 9);
 
-    let mut iter = list.iter();
+    for line in input.lines() {
+        let (move_amount, from_stack, to_stack) = process_moving(line);
 
-    println!("next {:?}", iter.next());
-    println!("next {:?}", iter.next());
-    println!("next {:?}", iter.next());
-    
-    println!("back {:?}", iter.next_back());
-    println!("back {:?}", iter.next_back());
-    println!("back {:?}", iter.next_back());
-    println!("back {:?}", iter.next_back());
-    println!("back {:?}", iter.next_back());
-                    
-    println!("next {:?}", iter.next());
-    println!("next {:?}", iter.next());
+        let mut temp_stack = List::new();
 
-    println!("list -> {:?}", list);
+        for _ in 0..move_amount {
+            let ch = stacks[from_stack - 1].shift();
+            
+            temp_stack.push(ch.unwrap());
+        }
+
+        while let Some(ch) = temp_stack.pop() {
+            stacks[to_stack - 1].unshift(ch);
+        }
+    }
+
+    print!("{}", stacks[0].iter().next().unwrap());
+    print!("{}", stacks[1].iter().next().unwrap());
+    print!("{}", stacks[2].iter().next().unwrap());
+    print!("{}", stacks[3].iter().next().unwrap());
+    print!("{}", stacks[4].iter().next().unwrap());
+    print!("{}", stacks[5].iter().next().unwrap());
+    print!("{}", stacks[6].iter().next().unwrap());
+    print!("{}", stacks[7].iter().next().unwrap());
+    print!("{}", stacks[8].iter().next().unwrap());
+    print!("{}", stacks[9].iter().next().unwrap());
+}
+
+fn process_moving(line: &str) -> (usize, usize, usize) {
+    let reg = Regex::new("move (\\d*) from (\\d*) to (\\d*)").unwrap();
+    let caps = reg.captures(line).unwrap();
+
+    let a = &caps[1];
+    let a = a.parse::<usize>();
+
+    let b = &caps[2];
+    let b = b.parse::<usize>();
+
+    let c = &caps[3];
+    let c = c.parse::<usize>();
+
+    (a.unwrap(), b.unwrap(), c.unwrap())
+}
+
+fn build_stacks(input: &str, num: usize) -> Vec<List> {
+    let mut stacks: Vec<List> = Vec::with_capacity(3);
+
+    for _ in 0..num {
+        stacks.push(List::new());
+    }
+
+    for line in input.lines() {
+        let mut chars = line.chars();
+
+        for i in 0..num {
+            let ch = chars.next();
+
+            let ch = match ch {
+                Some(' ') => continue,
+                None => continue,
+                Some(ch) => ch,
+            };
+
+
+            stacks[i].push(ch);
+        }
+    }
+
+    stacks
 }
