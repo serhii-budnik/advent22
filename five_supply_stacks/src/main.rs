@@ -45,35 +45,32 @@ impl List {
                 node.prev = Some(Rc::downgrade(&current_tail));
                 self.tail = node.into();
 
-                (*current_tail).borrow_mut().next = self.tail.clone();
+                current_tail.borrow_mut().next = self.tail.clone();
             }
         }
     }
 
     fn pop(&mut self) -> Option<char> {
-        match self.tail.take() {
-            None => None,
-            Some(tail) => {
-                let tail_value = (*tail).borrow().value;
-                let prev_to_tail = (*tail).borrow_mut().prev.take();
+        self.tail.take().and_then(|tail| {
+            let tail_value = tail.borrow().value;
+            let prev_to_tail = tail.borrow_mut().prev.take();
 
-                match prev_to_tail {
-                    None => {
-                        self.head.take();
-                    },
-                    Some(prev) => {
-                        let prev = prev.upgrade();
+            match prev_to_tail {
+                None => {
+                    self.head.take();
+                },
+                Some(prev) => {
+                    let prev = prev.upgrade();
 
-                        if let Some(prev) = prev {
-                            (*prev).borrow_mut().next = None;
-                            self.tail = Some(prev);
-                        }
+                    if let Some(prev) = prev {
+                        prev.borrow_mut().next = None;
+                        self.tail = Some(prev);
                     }
                 }
+            }
 
-                Some(tail_value)
-            },
-        }
+            Some(tail_value)
+        })
     }
 
     fn unshift(&mut self, value: char) {
@@ -89,31 +86,61 @@ impl List {
                 self.head = new_node.into();
 
                 if let Some(h) = &self.head {
-                    (*current_head).borrow_mut().prev = Some(Rc::downgrade(h));
+                    current_head.borrow_mut().prev = Some(Rc::downgrade(h));
                 }
             },
         };
     }
 
     fn shift(&mut self) -> Option<char> {
-        match self.head.take() {
-            None => None,
-            Some(head) => {
-                let head_value = (*head).borrow().value;
-                let after_head = (*head).borrow_mut().next.take();
+        self.head.take().and_then(|head| {
+            let head_value = head.borrow().value;
+            let after_head = head.borrow_mut().next.take();
 
-                match after_head {
-                    None => {
-                        self.tail.take();
-                    },
-                    Some(after_head) => { 
-                        (*after_head).borrow_mut().prev = None;
-                        self.head = Some(after_head);
-                    },
-                }
+            match after_head {
+                None => {
+                    self.tail.take();
+                },
+                Some(after_head) => { 
+                    after_head.borrow_mut().prev = None;
+                    self.head = Some(after_head);
+                },
+            }
 
-                Some(head_value)
+            Some(head_value)
+        })
+    }
+
+    fn find_node(&self, ch: char) -> Option<NodePtr> {
+        let mut iter = self.iter();
+
+        while let Some(current_node) = iter.next_node() {
+            if current_node.borrow().value == ch { return Some(current_node); }
+        }
+
+        None
+    }
+
+    fn delete(&mut self, ch: char) -> bool {
+        match self.find_node(ch) {
+            None => false,
+            Some(node) if node.borrow().prev.is_none() => {
+                self.shift();
+                true
             },
+            Some(node) if node.borrow().next.is_none() => {
+                self.pop();
+                true
+            },
+            Some(node) => {
+                let prev = node.borrow_mut().prev.take().unwrap().upgrade().unwrap();
+                let next = node.borrow_mut().next.take().unwrap();
+
+                next.borrow_mut().prev = Some(Rc::downgrade(&prev));
+                prev.borrow_mut().next = Some(next);
+
+                true
+            }
         }
     }
 
@@ -127,38 +154,37 @@ pub struct Iter {
     current_back: Option<NodePtr>,
 }
 
+impl Iter {
+    fn next_node(&mut self) -> Option<NodePtr> {
+        self.current.take().and_then(|current_ref| {
+            self.current = current_ref.borrow().next.clone();
+
+            Some(current_ref)
+        })
+    }
+}
+
 impl Iterator for Iter {
     type Item = char;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.current.take() {
-            None => None,
-            Some(current) => {
-                let node = (*current).borrow();
-                self.current = node.next.clone();
-
-                Some(node.value)
-            },
-        }
+        self.next_node().and_then(|node| Some(node.borrow().value))
     }
 }
 
 impl DoubleEndedIterator for Iter {
     fn next_back(&mut self) -> Option<Self::Item> {
-        match self.current_back.take() {
-            None => None,
-            Some(current_back) => {
-                let node = (*current_back).borrow();
+        self.current_back.take().and_then(|current_back| {
+            let node = current_back.borrow();
 
-                if let Some(prev) = &node.prev {
-                    let prev = prev.upgrade();
-                    
-                    self.current_back = prev;
-                }
+            if let Some(prev) = &node.prev {
+                let prev = prev.upgrade();
+                
+                self.current_back = prev;
+            }
 
-                Some(node.value)
-            },
-        }
+            Some(node.value)
+        })
     }
 }
 
@@ -196,7 +222,6 @@ fn main() {
     print!("{}", stacks[6].iter().next().unwrap());
     print!("{}", stacks[7].iter().next().unwrap());
     print!("{}", stacks[8].iter().next().unwrap());
-    print!("{}", stacks[9].iter().next().unwrap());
 }
 
 fn process_moving(line: &str) -> (usize, usize, usize) {
